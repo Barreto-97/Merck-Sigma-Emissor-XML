@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emissor XML ICMS - Merck e Sigma</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Syne:wght@600;700&display=swap" rel="stylesheet">
+
+    <!-- Bibliotecas Necessárias para ler PDF e zipar múltiplos XMLs no Front-End -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- Configuração do Web Worker do PDF.js -->
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+
+    <style>
+        :root {
+            /* Tema Escuro (Padrão) */
+            --bg-0: #050c1f;
+            --bg-1: #0a1a44;
+            --glow-a: rgba(59, 111, 224, 0.28);
+            --glow-b: rgba(11, 41, 103, 0.55);
+            --card-bg: rgba(255, 255, 255, 0.045);
+            --card-border: rgba(255, 255, 255, 0.10);
+            --field-bg: rgba(255, 255, 255, 0.04);
+            --text-main: #f1f5fd;
+            --text-muted: #93a3c4;
+            --primary: #4f86f7;
+            --primary-2: #2f5fd0;
+            --primary-soft: rgba(79, 134, 247, 0.14);
+            --success: #1fb981;
+            --success-2: #0f9467;
+            --border: rgba(255, 255, 255, 0.12);
+            --log-bg: rgba(2, 8, 24, 0.75);
+            --log-text: #6ee7a8;
+            --log-bar: rgba(255, 255, 255, 0.05);
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            --focus: #8fb0ff;
+        }
+
+        body.light-theme {
+            /* Tema Claro */
+            --bg-0: #eef2fa;
+            --bg-1: #dde6f7;
+            --glow-a: rgba(79, 134, 247, 0.22);
+            --glow-b: rgba(11, 41, 103, 0.10);
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-border: rgba(11, 41, 103, 0.12);
+            --field-bg: rgba(11, 41, 103, 0.035);
+            --text-main: #0b1b3d;
+            --text-muted: #55658a;
+            --primary: #0b2967;
+            --primary-2: #1a47a8;
+            --primary-soft: rgba(11, 41, 103, 0.08);
+            --success: #0f9467;
+            --success-2: #0b7a54;
+            --border: rgba(11, 41, 103, 0.16);
+            --log-bg: #0b1a3a;
+            --log-text: #6ee7a8;
+            --log-bar: rgba(255, 255, 255, 0.06);
+            --shadow: 0 20px 50px rgba(11, 41, 103, 0.14);
+            --focus: #1a47a8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            background: var(--bg-0);
+        }
+
+        body {
+            font-family: 'DM Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-main);
+            background:
+                radial-gradient(900px 520px at 85% -10%, var(--glow-a), transparent 60%),
+                radial-gradient(800px 600px at -10% 105%, var(--glow-b), transparent 60%),
+                linear-gradient(160deg, var(--bg-0), var(--bg-1));
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2.5rem 1rem 1.5rem;
+            transition: color 0.3s;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
+            padding: 1.75rem 2rem 2rem;
+        }
+
+        /* Cabeçalho */
+        .header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.75rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .logo {
+            height: 46px;
+            width: auto;
+            display: block;
+        }
+
+        .logo-dark-theme { display: block; }
+        .logo-light-theme { display: none; }
+        body.light-theme .logo-dark-theme { display: none; }
+        body.light-theme .logo-light-theme { display: block; }
+
+        .theme-btn {
+            background: var(--field-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.5rem 0.95rem;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .theme-btn:hover {
+            background: var(--primary-soft);
+            border-color: var(--primary);
+        }
+
+        .title-block {
+            margin-bottom: 1.75rem;
+        }
+
+        h1 {
+            font-family: 'Syne', 'DM Sans', 'Segoe UI', sans-serif;
+            font-size: 1.85rem;
+            font-weight: 700;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            margin-top: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Área de upload */
+        .file-upload-wrapper {
+            position: relative;
+        }
+
+        .dropzone {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 1.9rem 1rem;
+            border: 1.5px dashed var(--border);
+            border-radius: 14px;
+            background: var(--field-bg);
+            text-align: center;
+            transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+        }
+
+        .dropzone:hover,
+        .dropzone.is-over,
+        .dropzone:focus-within {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .dropzone.is-over {
+            transform: scale(1.01);
+        }
+
+        .dropzone-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        body:not(.light-theme) .dropzone-icon { color: var(--focus); }
+
+        .dropzone-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .dropzone-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .dropzone-hint {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .file-upload-input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1.1rem 0 0.25rem;
+        }
+
+        .status-text {
+            display: inline-block;
+            padding: 0.35rem 0.9rem;
+            border-radius: 999px;
+            background: var(--field-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        /* Botões */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.95rem;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            color: #ffffff;
+            transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+        }
+
+        .btn-success {
+            margin-top: 1rem;
+            background: linear-gradient(135deg, var(--success), var(--success-2));
+            box-shadow: 0 10px 24px rgba(15, 148, 103, 0.28);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.06);
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Log */
+        .log-panel {
+            margin-top: 1.5rem;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            background: var(--log-bg);
+        }
+
+        .log-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 0.9rem;
+            background: var(--log-bar);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-family: 'DM Mono', 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: #8fa1c7;
+        }
+
+        .log-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .log-bar span.log-label { margin-left: 0.4rem; }
+
+        textarea {
+            display: block;
+            width: 100%;
+            height: 220px;
+            background: transparent;
+            color: var(--log-text);
+            border: none;
+            padding: 1rem;
+            font-family: 'DM Mono', 'Courier New', Courier, monospace;
+            font-size: 0.82rem;
+            line-height: 1.55;
+            resize: none;
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #6f82ab;
+        }
+
+        .footer {
+            margin-top: 1.75rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--focus);
+            outline-offset: 2px;
+        }
+
+        .dropzone:focus-within { outline: none; }
+
+        @media (max-width: 520px) {
+            .container { padding: 1.25rem 1.1rem 1.5rem; border-radius: 16px; }
+            .logo { height: 38px; }
+            h1 { font-size: 1.5rem; }
+            .theme-btn { padding: 0.45rem 0.75rem; font-size: 0.8rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-flex">
+            <div class="brand">
+                <img class="logo logo-dark-theme" alt="DSV" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIGlkPSJMYXllcl8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1OTMuMTYgMjg2LjI4Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2ZmZjt9PC9zdHlsZT48L2RlZnM+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJtNDU4LjMyLDE5OS41NmMtMS40MiwyLjc2LTUuNjIsNy43My0xMi45LDcuNzNoLTI5LjkyYy03LjIzLDAtMTEuNTEtNS4wMi0xMi44LTcuNjZsLTQwLjUxLTgyLjE4Yy0zLjk4LTcuNzQtMTIuMzItMTAuMjMtMTkuMjktMTAuMjNoLTczLjU1Yy02Ljc4LDAtMTAuNzMsNC4zNC0xMC43MywxMC43MiwwLDYuNzksNC40MSwxMC43MiwxMC44NCwxMC43Mmg1MC42YzIxLjU1LDAsMzkuMzgsMTMuMDEsMzkuMzgsMzkuMzFzLTE4LjAxLDM5LjMxLTM5LjM4LDM5LjMxaC02NS4wM2MtNS45LDAtMTAuOC0zLjQxLTEwLjgtMTAuODV2LTE0LjE2YzAtMi40MSwxLjYyLTMuNTgsMy42LTMuNThoNTcuODRjNiwwLDEwLjgtMy42LDEwLjgtMTAuNzJzLTQuNzItMTAuNzMtMTAuNzgtMTAuNzNoLTU0LjRjLTkuMTIuMDEtMTcuNC0yLjQ3LTIzLjI1LTYuMzEtMywzNC44Ny0yNy45Nyw1Ni4zNi02NC40NSw1Ni4zNmgtODEuMzZjLTIsMC0zLjYtMS4xOS0zLjYtMy41N3YtNzEuNDdjMC0yLjM3LDEuNTgtMy41NiwzLjU0LTMuNTdoMjguNjRjNy42MywwLDExLjAzLDQuODksMTEuMDMsMTAuNjd2MzUuNzhoLjAyYzAsMi4zNywxLjU4LDMuNTYsMy41MywzLjU3LDcuNjYsMCwyNC44NCwwLDI0Ljg0LDAsMTkuNTUsMCwzNS44LTExLjgyLDM1LjgtMzUuNzNzLTE2LjE5LTM1Ljc0LTM1LjgtMzUuNzRoLTY4LjA5Yy0xLjk0LS4wMy0zLjUxLTEuMjEtMy41MS0zLjU4di0xNC4xOWMwLTguMDIsNS42OC0xMC44MiwxMC45MS0xMC44Mmg3NC40MmMyMC45NSwwLDM5LjksNy43NCw1MS4wNSwyMi4wMiw2LjA2LTE0LjUzLDE5LjYtMjIuMDIsMzYuNjItMjIuMDJoMTA2LjU4YzEzLjEsMCwyNy45Miw0LjQ5LDM1LjYzLDE5LjU4bDM0LjQ5LDcyLjI0Yy4zNS43NCwxLjA2LDEuMDksMS45MywxLjA5LjgsMCwxLjU1LS4zLDEuOTEtMS4wNSwwLDAsNDIuNjUtODkuNjEsNDIuOS05MC4xMi4yMi0uNDgsMS4xLTEuNzMsMy4xOC0xLjczaDMyLjhjMiwwLDMuNiwxLjE4LDMuNiwzLjU3LDAsLjY4LS4xMywxLjI2LS4zNSwxLjc1bC01NS45NywxMTUuNjJaIi8+PC9zdmc+">
+                <img class="logo logo-light-theme" alt="DSV" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIGlkPSJMYXllcl8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1OTMuMTYgMjg2LjI4Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6IzBiMjk2Nzt9PC9zdHlsZT48L2RlZnM+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJtNDU4LjMyLDE5OS41NmMtMS40MiwyLjc2LTUuNjIsNy43My0xMi45LDcuNzNoLTI5LjkyYy03LjIzLDAtMTEuNTEtNS4wMi0xMi44LTcuNjZsLTQwLjUxLTgyLjE4Yy0zLjk4LTcuNzQtMTIuMzItMTAuMjMtMTkuMjktMTAuMjNoLTczLjU1Yy02Ljc4LDAtMTAuNzMsNC4zNC0xMC43MywxMC43MiwwLDYuNzksNC40MSwxMC43MiwxMC44NCwxMC43Mmg1MC42YzIxLjU1LDAsMzkuMzgsMTMuMDEsMzkuMzgsMzkuMzFzLTE4LjAxLDM5LjMxLTM5LjM4LDM5LjMxaC02NS4wM2MtNS45LDAtMTAuOC0zLjQxLTEwLjgtMTAuODV2LTE0LjE2YzAtMi40MSwxLjYyLTMuNTgsMy42LTMuNThoNTcuODRjNiwwLDEwLjgtMy42LDEwLjgtMTAuNzJzLTQuNzItMTAuNzMtMTAuNzgtMTAuNzNoLTU0LjRjLTkuMTIuMDEtMTcuNC0yLjQ3LTIzLjI1LTYuMzEtMywzNC44Ny0yNy45Nyw1Ni4zNi02NC40NSw1Ni4zNmgtODEuMzZjLTIsMC0zLjYtMS4xOS0zLjYtMy41N3YtNzEuNDdjMC0yLjM3LDEuNTgtMy41NiwzLjU0LTMuNTdoMjguNjRjNy42MywwLDExLjAzLDQuODksMTEuMDMsMTAuNjd2MzUuNzhoLjAyYzAsMi4zNywxLjU4LDMuNTYsMy41MywzLjU3LDcuNjYsMCwyNC44NCwwLDI0Ljg0LDAsMTkuNTUsMCwzNS44LTExLjgyLDM1LjgtMzUuNzNzLTE2LjE5LTM1Ljc0LTM1LjgtMzUuNzRoLTY4LjA5Yy0xLjk0LS4wMy0zLjUxLTEuMjEtMy41MS0zLjU4di0xNC4xOWMwLTguMDIsNS42OC0xMC44MiwxMC45MS0xMC44Mmg3NC40MmMyMC45NSwwLDM5LjksNy43NCw1MS4wNSwyMi4wMiw2LjA2LTE0LjUzLDE5LjYtMjIuMDIsMzYuNjItMjIuMDJoMTA2LjU4YzEzLjEsMCwyNy45Miw0LjQ5LDM1LjYzLDE5LjU4bDM0LjQ5LDcyLjI0Yy4zNS43NCwxLjA2LDEuMDksMS45MywxLjA5LjgsMCwxLjU1LS4zLDEuOTEtMS4wNSwwLDAsNDIuNjUtODkuNjEsNDIuOS05MC4xMi4yMi0uNDgsMS4xLTEuNzMsMy4xOC0xLjczaDMyLjhjMiwwLDMuNiwxLjE4LDMuNiwzLjU3LDAsLjY4LS4xMywxLjI2LS4zNSwxLjc1bC01NS45NywxMTUuNjJaIi8+PC9zdmc+">
+            </div>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀️ Tema Claro</button>
+        </div>
+
+        <div class="title-block">
+            <h1>Emissor XML ICMS - Merck e Sigma</h1>
+            <p class="subtitle">Envie os DAREs em PDF e receba os XMLs prontos para pagamento.</p>
+        </div>
+
+        <div class="file-upload-wrapper">
+            <div class="dropzone" id="dropzone">
+                <div class="dropzone-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg>
+                </div>
+                <div class="dropzone-title">Selecionar PDFs (DARE)</div>
+                <div class="dropzone-hint">Clique ou arraste os arquivos para cá</div>
+                <input type="file" id="fileInput" class="file-upload-input" multiple accept=".pdf" onchange="handleFileSelection()" aria-label="Selecionar PDFs (DARE)">
+            </div>
+        </div>
+
+        <div class="status-row">
+            <p class="status-text" id="statusLabel">Nenhum arquivo selecionado.</p>
+        </div>
+
+        <button class="btn btn-success" id="processBtn" onclick="processFiles()" disabled>Processar e Gerar XMLs</button>
+
+        <div class="log-panel">
+            <div class="log-bar">
+                <span class="log-dot"></span><span class="log-dot"></span><span class="log-dot"></span>
+                <span class="log-label">log de processamento</span>
+            </div>
+            <textarea id="logArea" readonly placeholder="Aguardando arquivos..."></textarea>
+        </div>
+    </div>
+
+    <div class="footer">
+        By: Systems Departament - André Santos
+    </div>
+
+    <script>
+        let selectedFiles = [];
+
+        // Alternância de Tema (com persistência)
+        function toggleTheme() {
+            const body = document.body;
+            const themeBtn = document.getElementById("themeBtn");
+            body.classList.toggle("light-theme");
+            
+            if (body.classList.contains("light-theme")) {
+                themeBtn.innerText = "🌙 Tema Escuro";
+            } else {
+                themeBtn.innerText = "☀️ Tema Claro";
+            }
+            try {
+                localStorage.setItem("emissorTheme", body.classList.contains("light-theme") ? "light" : "dark");
+            } catch (e) {}
+        }
+
+        // Restaura o tema salvo
+        (function restoreTheme() {
+            try {
+                if (localStorage.getItem("emissorTheme") === "light") {
+                    document.body.classList.add("light-theme");
+                    document.getElementById("themeBtn").innerText = "🌙 Tema Escuro";
+                }
+            } catch (e) {}
+        })();
+
+        // Feedback visual de arrastar e soltar (a seleção continua pelo input nativo)
+        (function dropzoneFeedback() {
+            const zone = document.getElementById("dropzone");
+            ["dragenter", "dragover"].forEach(ev => zone.addEventListener(ev, () => zone.classList.add("is-over")));
+            ["dragleave", "drop"].forEach(ev => zone.addEventListener(ev, () => zone.classList.remove("is-over")));
+        })();
+
+        // Função utilitária para Logs
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            logArea.value += message + "\n";
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // Manipula a seleção de arquivos no input
+        function handleFileSelection() {
+            const input = document.getElementById('fileInput');
+            selectedFiles = Array.from(input.files);
+            const statusLabel = document.getElementById('statusLabel');
+            const processBtn = document.getElementById('processBtn');
+            
+            if (selectedFiles.length > 0) {
+                statusLabel.innerText = `${selectedFiles.length} arquivo(s) selecionado(s).`;
+                processBtn.disabled = false;
+                log(`\n--- ${selectedFiles.length} Arquivos carregados para fila ---`);
+                selectedFiles.forEach(file => log(`- ${file.name}`));
+            } else {
+                statusLabel.innerText = "Nenhum arquivo selecionado.";
+                processBtn.disabled = true;
+            }
+        }
+
+        // Extrai texto usando PDF.js
+        async function extractTextFromPDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = "";
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    // Junta os itens de texto com um espaço para evitar colagem de palavras
+                    const pageText = textContent.items.map(item => item.str).join(" ");
+                    fullText += pageText + "\n";
+                }
+                return fullText;
+            } catch (error) {
+                throw new Error("Erro de leitura do PDF. O arquivo pode estar corrompido ou protegido.");
+            }
+        }
+
+        // Motor de Regras Regex (Convertido do Python)
+        function extrairDadosDare(texto) {
+            let duimp = "";
+            let refCliente = "";
+            let valorXml = "0.00";
+            let codigoBarras = "";
+
+            // 1. Extração da Duimp (F3)
+            const duimpMatch = texto.match(/(\d{2}BR\d{11,15})/);
+            if (duimpMatch) duimp = duimpMatch[1];
+
+            // 2. Extração da Ref. Cliente (F4) - Tolerância OCR
+            const refMatch = texto.match(/(?:BSA|85A|BSAO|BS4)[A-Z0-9]{7,9}\W*([A-Za-z0-9]{6})\b/i);
+            if (refMatch) refCliente = refMatch[1];
+
+            // 3. Extração do Valor ICMS (F5)
+            // Extrai todos os blocos de R$ e pega o último válido na página
+            const regexValor = /R\$\s*([\d\.]+\s*,\s*\d{2})/g;
+            let match;
+            let ultimoValorEncontrado = null;
+            while ((match = regexValor.exec(texto)) !== null) {
+                ultimoValorEncontrado = match[1];
+            }
+            
+            if (ultimoValorEncontrado) {
+                // Remove espaços em branco invisíveis lidos pelo OCR e aplica o formato de Ponto Flutuante
+                let valorLimpo = ultimoValorEncontrado.replace(/\s/g, '');
+                valorXml = valorLimpo.replace(/\./g, '').replace(',', '.');
+            }
+
+            // 4. Extração do Código de Barras DARE (F7)
+            const numeros = texto.replace(/\D/g, ''); // Remove tudo que não for dígito
+            const barMatch = numeros.match(/(858\d{45})/);
+            if (barMatch) codigoBarras = `/BRTL/${barMatch[1]}`;
+
+            // Verificação rigorosa
+            const errosPendentes = [];
+            if (!duimp) errosPendentes.push("Duimp");
+            if (!refCliente) errosPendentes.push("Ref. Cliente");
+            if (!codigoBarras) errosPendentes.push("Código de Barras");
+
+            if (errosPendentes.length > 0) {
+                return { success: false, msg: `Faltando: ${errosPendentes.join(", ")}` };
+            }
+
+            return {
+                success: true,
+                dados: { duimp, refCliente, valorXml, codigoBarras }
+            };
+        }
+
+        // Utilitário de formatação de data
+        function pad(number) {
+            return number < 10 ? '0' + number : number;
+        }
+
+        // Construção da String XML
+        function gerarXML(dados, index, timestampArgs) {
+            const { dtCriacao, dataCorrente, prefixoExcel, sufixoVba } = timestampArgs;
+            
+            const indexFormatado = String(index).padStart(3, '0');
+            const msgId = `xml_icms_1227_dsv_${sufixoVba}_${index}`.substring(0, 35);
+            
+            // O literal abaixo não possui espaçamentos adicionais para não corromper o padrão ISO 20022
+            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"><CstmrCdtTrfInitn><GrpHdr><MsgId>${msgId}</MsgId><CreDtTm>${dtCriacao}</CreDtTm><NbOfTxs>1</NbOfTxs><CtrlSum>${dados.valorXml}</CtrlSum><InitgPty><Nm>Merck</Nm></InitgPty></GrpHdr><PmtInf><PmtInfId>B_${sufixoVba}_${index}</PmtInfId><PmtMtd>TRF</PmtMtd><BtchBookg>false</BtchBookg><PmtTpInf><LclInstrm><Prtry>81</Prtry></LclInstrm></PmtTpInf><ReqdExctnDt>${dataCorrente}</ReqdExctnDt><Dbtr><Nm>Merck S.A.</Nm><PstlAdr><Ctry>BR</Ctry></PstlAdr><Id><OrgId><Othr><Id>33069212000184</Id><SchmeNm><Cd>TXID</Cd></SchmeNm></Othr><Othr><Id>11649</Id><SchmeNm><Cd>CUST</Cd></SchmeNm></Othr></OrgId></Id></Dbtr><DbtrAcct><Id><Othr><Id>0011058476</Id></Othr></Id><Ccy>BRL</Ccy></DbtrAcct><DbtrAgt><FinInstnId><BIC>CHASBRSPXXX</BIC><PstlAdr><Ctry>BR</Ctry></PstlAdr></FinInstnId></DbtrAgt><CdtTrfTxInf><PmtId><InstrId>${dados.duimp}</InstrId><EndToEndId>${dados.refCliente}</EndToEndId></PmtId><Amt><InstdAmt Ccy="BRL">${dados.valorXml}</InstdAmt></Amt><InstrForDbtrAgt>${dados.codigoBarras}</InstrForDbtrAgt><Purp><Cd>TAXS</Cd></Purp><RmtInf><Strd><RfrdDocInf><RltdDt>${dataCorrente}</RltdDt></RfrdDocInf></Strd></RmtInf></CdtTrfTxInf></PmtInf></CstmrCdtTrfInitn></Document>`;
+
+            const nomeArquivo = `xml_ct_icms_br_1227_dsv_${prefixoExcel}_${sufixoVba}_${indexFormatado}.xml`;
+
+            return { nomeArquivo, xmlContent };
+        }
+
+        // Força o Download do Arquivo/Blob
+        function downloadBlob(filename, blob) {
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Loop Principal de Processamento
+        async function processFiles() {
+            const processBtn = document.getElementById('processBtn');
+            processBtn.disabled = true;
+            processBtn.innerText = "Processando...";
+            
+            const zip = new JSZip();
+            let sucessos = 0;
+            let processadosComSucesso = false;
+
+            // Congela as variáveis de tempo para todo o lote, simulando o exato momento de extração
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const MM = pad(now.getMonth() + 1);
+            const dd = pad(now.getDate());
+            const HH = pad(now.getHours());
+            const mm = pad(now.getMinutes());
+            const ss = pad(now.getSeconds());
+
+            const timestampArgs = {
+                dataCorrente: `${yyyy}-${MM}-${dd}`,
+                dtCriacao: `${yyyy}-${MM}-${dd}T${HH}:${mm}:${ss}`,
+                prefixoExcel: `${yyyy}${MM}${dd}${HH}${mm}`,
+                sufixoVba: `${yyyy}${MM}${dd}_${HH}${mm}${ss}`
+            };
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                try {
+                    const texto = await extractTextFromPDF(file);
+                    const extracao = extrairDadosDare(texto);
+
+                    if (extracao.success) {
+                        const { nomeArquivo, xmlContent } = gerarXML(extracao.dados, i + 1, timestampArgs);
+                        
+                        // Adiciona o XML gerado dentro do arquivo ZIP virtual
+                        zip.file(nomeArquivo, xmlContent);
+                        processadosComSucesso = true;
+                        sucessos++;
+                        log(`[OK] ${file.name}`);
+                    } else {
+                        log(`[ERRO] ${file.name} - ${extracao.msg}`);
+                    }
+                } catch (e) {
+                    log(`[ERRO CRÍTICO] ${file.name} - ${e.message}`);
+                }
+            }
+
+            // Entrega Final ao Usuário
+            if (processadosComSucesso) {
+                log(`\nPreparando download de ${sucessos} XML(s)...`);
+                if (sucessos === 1) {
+                    // Se houver apenas 1 arquivo com sucesso, baixa o XML direto, evitando um arquivo .ZIP desnecessário
+                    const xmlData = Object.values(zip.files)[0];
+                    const blob = new Blob([await xmlData.async("string")], { type: "application/xml" });
+                    downloadBlob(xmlData.name, blob);
+                } else {
+                    // Se houver múltiplos, consolida e baixa em ZIP
+                    const zipBlob = await zip.generateAsync({ type: "blob" });
+                    downloadBlob(`Lote_XML_ICMS_${timestampArgs.sufixoVba}.zip`, zipBlob);
+                }
+                log("[SISTEMA] Processo concluído com sucesso!");
+                alert(`Processamento finalizado!\n${sucessos} XML(s) gerado(s) com sucesso.`);
+            } else {
+                log("\n[SISTEMA] Falha geral no lote. Nenhum arquivo foi gerado.");
+                alert("Nenhum arquivo pôde ser processado. Verifique o log.");
+            }
+
+            processBtn.innerText = "Processar e Gerar XMLs";
+            processBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>
