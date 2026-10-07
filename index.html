@@ -12,6 +12,7 @@
     <!-- Bibliotecas Necessárias para ler PDF e zipar múltiplos XMLs no Front-End -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Configuração do Web Worker do PDF.js -->
     <script>
@@ -579,6 +580,7 @@
             processBtn.innerText = "Processando...";
             
             const zip = new JSZip();
+            const auditoria = [];
             let sucessos = 0;
             let processadosComSucesso = false;
 
@@ -609,6 +611,13 @@
                         
                         // Adiciona o XML gerado dentro do arquivo ZIP virtual
                         zip.file(nomeArquivo, xmlContent);
+                        auditoria.push([
+                            extracao.dados.duimp,
+                            extracao.dados.refCliente,
+                            Number(extracao.dados.valorXml),
+                            extracao.dados.codigoBarras,
+                            timestampArgs.dataCorrente
+                        ]);
                         processadosComSucesso = true;
                         sucessos++;
                         log(`[OK] ${file.name}`);
@@ -633,6 +642,20 @@
                     const zipBlob = await zip.generateAsync({ type: "blob" });
                     downloadBlob(`Lote_XML_ICMS_${timestampArgs.sufixoVba}.zip`, zipBlob);
                 }
+                                // Relatório de auditoria (Excel)
+                const cabecalho = ["InstrId", "EndToEndId", "CtrlSum", "InstrForDbtrAgt", "RltdDt"];
+                const ws = XLSX.utils.aoa_to_sheet([cabecalho].concat(auditoria));
+                ws["!cols"] = [{ wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 60 }, { wch: 12 }];
+                for (let r = 0; r < auditoria.length; r++) {
+                    ws["C" + (r + 2)].z = "#,##0.00";
+                }
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+                const xlsxArray = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+                const xlsxBlob = new Blob([xlsxArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                downloadBlob(`Auditoria_XML_ICMS_${timestampArgs.sufixoVba}.xlsx`, xlsxBlob);
+                log("[SISTEMA] Relatório de auditoria gerado.");
+
                 log("[SISTEMA] Processo concluído com sucesso!");
                 alert(`Processamento finalizado!\n${sucessos} XML(s) gerado(s) com sucesso.`);
             } else {
